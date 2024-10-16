@@ -116,9 +116,14 @@ int multi_line_popup(const char* strs[], const int* exit_keys, size_t  exit_keys
 		mvwprintw(popup, 1 + i, 1, "%s", strs[i]);
 	}
 	wrefresh(popup);
-	do {
+	if (exit_keys != NULL) {
+		do {
+			ch = getch();
+		} while (!is_in_array(ch, exit_keys, exit_keys_len));
+	}
+	else {
 		ch = getch();
-	} while (!is_in_array(ch, exit_keys, exit_keys_len));
+	}
 	delwin(popup);
 	return ch;
 }
@@ -189,7 +194,14 @@ bool handle_form(FORM* info_form, FIELD** info_fields, FORM* answer_form, FIELD*
 	sqlite3_bind_text(st, 4, phone, strlen(phone), free);
 	sqlite3_bind_text(st, 5, answers, strlen(answers), free);
 
-	sqlite3_step(st);
+	if (sqlite3_step(st) == SQLITE_ERROR) {
+		const char* message[] = {
+			" Vous avez deja participer ! ",
+			" Une seule participation par personne !",
+			NULL
+		};
+		multi_line_popup(message, NULL, 0);
+	}
 	sqlite3_finalize(st);
 	return true;
 }
@@ -197,12 +209,11 @@ bool handle_form(FORM* info_form, FIELD** info_fields, FORM* answer_form, FIELD*
 int main() {
 	bool end_loop = false;
 
-	FIELD* info_fields[9];
+	FIELD** info_fields = malloc(sizeof(FIELD*) * 9);
 	FORM* info_form;
 	
-	FIELD* answer_fields[21];
+	FIELD** answer_fields = malloc(sizeof(FIELD*) * 22);
 	FIELD* button;
-
 	FORM* answer_form;
 
 	FORM* selected_form = NULL;
@@ -228,16 +239,17 @@ start_over:
 	keypad(stdscr, TRUE);
 
 	header_window = newwin(10, 80, 0, 0);
-		elephant_window = derwin(header_window, 7, 16, 1, 3);
-		rules_window = derwin(header_window, 8, 60, 1, 18);
+
+	elephant_window = derwin(header_window, 7, 16, 1, 3);
+	rules_window = derwin(header_window, 8, 60, 1, 18);
+
 	form_window = newwin(16, 80, 9, 0);
-		information = derwin(form_window, 5, 80, 0, 0);
-			inner_information = derwin(information, 3, 78, 1, 1);
-		answer = derwin(form_window, 11, 80, 4, 0);
-			inner_answer = derwin(answer, 9, 78, 1, 1);
 
+	information = derwin(form_window, 5, 80, 0, 0);
+	inner_information = derwin(information, 3, 78, 1, 1);
 
-
+	answer = derwin(form_window, 11, 80, 4, 0);
+	inner_answer = derwin(answer, 9, 78, 1, 1);
 
 	new_label_field_overbuff(&info_fields[0], &info_fields[1], "Prenom:", 0, 4, 19);
 	new_label_field_overbuff(&info_fields[2], &info_fields[3], "Mail:", 2, 4, 21);
@@ -421,5 +433,7 @@ redraw:
 	if (!end_for_real) {
 		goto start_over;
 	}
+	free(info_fields);
+	free(answer_fields);
 	sqlite3_close(db);
 }
