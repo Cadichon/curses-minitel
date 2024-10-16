@@ -137,9 +137,40 @@ bool handle_form(FORM* info_form, FIELD** info_fields, FORM* answer_form, FIELD*
 	char* lastname = trim_whitespaces(field_buffer(info_fields[5], 0));
 	char* phone = trim_whitespaces(field_buffer(info_fields[7], 0));
 	char* answers;
+
+	if (strlen(mail) == 0 || strlen(name) == 0 || strlen(lastname) == 0 || strlen(phone) == 0) {
+		size_t index = 2;
+		const char* to_check[4] = {
+			mail, name, lastname, phone
+		};
+		const char* message_to_add[4] = {
+			" - Mail",
+			" - Prenom",
+			" - Nom de famille",
+			" - Numero de telephone"
+		};
+		const char* message[8] = {
+			" Vous avez oublier d'entrer certaine information ",
+			" Je ne trouve pas les informations suivantes : "
+		};
+		for (size_t i = 0; i < 4; i += 1) {
+			if (strlen(to_check[i]) == 0) {
+				message[index] = message_to_add[i];
+				index += 1;
+			}
+		}
+		message[index] = " Appuyer sur n'importe quelle touche pour revenir en arriere ";
+		message[index + 1] = NULL;
+		multi_line_popup(message, NULL, 0);
+		free(name);
+		free(mail);
+		free(lastname);
+		free(phone);
+		return false;
+	} 
+
 	size_t nb_answers = 0;
 	cJSON* array = cJSON_CreateArray();
-
 
 	for (size_t i = 0; answer_fields[i] != NULL; i += 1) {
 		if ((field_opts(answer_fields[i]) & O_ACTIVE) && answer_fields[i + 1] != NULL) {
@@ -396,6 +427,11 @@ redraw:
 					}
 					else {
 						clear();
+						form_driver(answer_form, REQ_FIRST_FIELD);
+						form_driver(info_form, REQ_FIRST_FIELD);
+						unpost_form(answer_form);
+						unpost_form(info_form);
+						selected_form = info_form;
 						goto redraw;
 					}
 				}
