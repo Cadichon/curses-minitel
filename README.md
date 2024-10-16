@@ -15,6 +15,8 @@ TLDR
 
 # Linux
 
+Tester sous Debian 12 (bookworm) avec gcc 12.2.0, sous x86_64
+
 ``` sh
 # Uses vcpkg
 # Edit CMakeUserPresets.json before launching
